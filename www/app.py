@@ -1,4 +1,4 @@
-# -- UTF-8 --
+# -- coding: UTF-8 --
 import logging
 import asyncio
 # import os

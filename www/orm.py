@@ -1,9 +1,17 @@
-# -- UTF-8 --
+# -- coding: UTF-8 --
 import aiomysql
 import logging
 import asyncio
 
+# 封装orm操作
+
 __author__ = 'Qp'
+
+logging.basicConfig(level=logging.INFO)
+
+
+def log(sql, args=()):
+    logging.info('SQL: %s' % sql)
 
 
 # 创建连接池
@@ -16,7 +24,7 @@ def create_pool(loop, **kw):
         port=kw.get('port', 3306),
         user=kw['user'],
         password=kw['password'],
-        db=kw['db'],
+        db=kw['database'],
         charset=kw.get('charset', 'utf8'),
         autocommit=kw.get('autocommit', True),
         maxsize=kw.get('maxsize', 10),
@@ -25,10 +33,19 @@ def create_pool(loop, **kw):
     )
 
 
+# 关闭连接池
+async def close_pool():
+    logging.info('close database connection pool...')
+    global __pool
+    if __pool is not None:
+        __pool.close()
+        await __pool.wait_closed()
+
+
 # 封装select语句
 @asyncio.coroutine
 def select(sql, args, size=None):
-    logging.log(sql, args)
+    log(sql, args)
     global __pool
     with (yield from __pool) as coon:
         cur = yield from coon.cursor(aiomysql.DictCursor)
@@ -45,7 +62,7 @@ def select(sql, args, size=None):
 # 封装insert update delete
 @asyncio.coroutine
 def execute(sql, args):
-    logging.log(sql)
+    log(sql)
     with (yield from __pool) as coon:
         try:
             cur = yield from coon.cursor()
@@ -143,6 +160,8 @@ class ModelMetaclass(type):
         attrs['__update__'] = 'update `%s` set %s where `%s` = ?' % (
             tableName, ', '.join(map(lambda f: '`%s`=?' % (mappings.get(f).name or f), fields)), primaryKey)
         attrs['__delete__'] = 'delete from `%s` where `%s` = ?' % (tableName, primaryKey)
+        # __new__必须有返回的实例,__init__在返回的实例上执行,否则不会执行__init__
+        return type.__new__(cls, name, bases, attrs)
 
 
 # 所有ORM映射的基类Model
@@ -153,11 +172,11 @@ class Model(dict, metaclass=ModelMetaclass):
     def __init__(self, **kw):
         super(Model, self).__init__(**kw)
 
-    def __getattr__(self, item):
+    def __getattr__(self, key):
         try:
-            return self[item]
+            return self[key]
         except KeyError:
-            raise AttributeError(r"'Model' object has no attribute '%s'" % item)
+            raise AttributeError(r"'Model' object has no attribute '%s'" % key)
 
     def __setattr__(self, key, value):
         self[key] = value
@@ -223,7 +242,7 @@ class Model(dict, metaclass=ModelMetaclass):
         return cls(**rs[0])
 
     async def save(self):
-        args = list(map(self.getValueOrDefault, self.__field__))
+        args = list(map(self.getValueOrDefault, self.__fields__))
         args.append(self.getValueOrDefault(self.__primary_key__))
         rows = await execute(self.__insert__, args)
         if rows != 1:
@@ -241,3 +260,10 @@ class Model(dict, metaclass=ModelMetaclass):
         rows = await execute(self.__delete__, args)
         if rows != 1:
             logging.warning('failed to remove by primary key: affected rows: %s' % rows)
+
+# 测试
+# loop = asyncio.get_event_loop()
+# loop.run_until_complete(
+#     create_pool(host='127.0.0.1', port=3306, user='root', password='admin', db='python_test', loop=loop))
+# rs = loop.run_until_complete(select('select * from users', None))
+# print("rs: %s" % rs)
