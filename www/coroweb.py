@@ -58,8 +58,15 @@ def post(path):
     return decorator
 
 
+# inspect模块
+# 1) 对是否是模块 框架 函数等进行检查
+# 2) 获取源码
+# 3) 获取类或函数的参数信息
+# 4) 解析堆栈
 def get_required_kw_args(fn):
     args = []
+    # inspect.signature(fn)将返回一个signature对象,值为fn这个函数的所有参数
+    # parameters属性是一个有序字典,包含参数的各种信息
     params = inspect.signature(fn).parameters
     for name, param in params.items():
         if param.kind == inspect.Parameter.KEYWORD_ONLY and param.default == inspect.Parameter.empty:
@@ -105,6 +112,10 @@ def has_request_arg(fn):
     return found
 
 
+# 1)确定HTTP请求是POST/GET,使用request.method判断
+# 2)根据HTTP请求的content_type,选取不同方法解析参数
+# 3)处理请求参数,使其成为视图函数可接受的参数
+# 4)调用视图函数
 class RequestHandler(object):
     def __init__(self, app, fn):
         self._app = app
@@ -168,12 +179,16 @@ class RequestHandler(object):
             return dict(error=e.error, data=e.data, message=e.message)
 
 
+# 静态资源文件注册函数
 def add_static(app):
     path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
     app.router.add_static('/static/', path)
     logging.info('add static %s => %s' % ('/static/', path))
 
 
+# 注册一个视图函数
+# 1)验证视图函数method和path参数
+# 2)将视图函数转变为协程
 def add_route(app, fn):
     method = getattr(fn, '__method__', None)
     path = getattr(fn, '__route__', None)
@@ -186,6 +201,7 @@ def add_route(app, fn):
     app.router.add_route(method, path, RequestHandler(app, fn))
 
 
+# 批量注册视图函数
 def add_routes(app, module_name):
     n = module_name.rfind('.')
     if n == (-1):

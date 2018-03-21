@@ -18,10 +18,8 @@ __author__ = 'Qp'
 logging.basicConfig(level=logging.INFO)
 
 
-def index(request):
-    return web.Response(body=b'<h1>Awesome</h1>', headers={'content-type': 'text/html'})
-
-
+# jinja2是Python中的模板引擎类型Java中FreeMarker
+# 初始化jinja2
 def init_jinja2(app, **kw):
     logging.info('init jinja2...')
     options = dict(
@@ -43,10 +41,12 @@ def init_jinja2(app, **kw):
     app['__templating__'] = env
 
 
+# 定义拦截器(middleware)封装框架
+# 编写用于输出日志的middleware
 async def logger_factory(app, handler):
     async def logger(request):
         logging.info('Request: %s %s' % (request.method, request.path))
-        return (await handler(request))
+        return await handler(request)
 
     return logger
 
@@ -65,6 +65,9 @@ async def data_factory(app, handler):
     return parse_data
 
 
+# 处理视图函数返回值，制作response的middleware
+# 请求的处理过程
+# logger_factory => response_factory => RequestHandler().__call__ => handler
 async def response_factory(app, handler):
     async def response(request):
         logging.info('Response handler...')
@@ -92,11 +95,11 @@ async def response_factory(app, handler):
                 resp = web.Response(body=app['__templating__'].get_template(template).render(**r).encode('utf-8'))
                 resp.content_type = 'text/html;charset=utf-8'
                 return resp
-        if isinstance(r, int) and r >= 100 and r < 600:
+        if isinstance(r, int) and 100 <= r < 600:
             return web.Response(r)
         if isinstance(r, tuple) and len(r) == 2:
             t, m = r
-            if isinstance(t, int) and t >= 100 and t < 600:
+            if isinstance(t, int) and 100 <= t < 600:
                 return web.Response(t, str(m))
         # default
         resp = web.Response(body=str(r).encode('utf-8'))
