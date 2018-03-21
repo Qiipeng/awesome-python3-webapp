@@ -1,7 +1,6 @@
 # -- coding: UTF-8 --
 import aiomysql
 import logging
-import asyncio
 
 # 封装orm操作
 
@@ -15,11 +14,11 @@ def log(sql, args=()):
 
 
 # 创建连接池
-@asyncio.coroutine
-def create_pool(loop, **kw):
+# @asyncio.coroutine
+async def create_pool(loop, **kw):
     logging.info('create database connection pool...')
     global __pool
-    __pool = yield from aiomysql.create_pool(
+    __pool = await aiomysql.create_pool(
         host=kw.get('host', 'localhost'),
         port=kw.get('port', 3306),
         user=kw['user'],
@@ -43,32 +42,32 @@ async def close_pool():
 
 
 # 封装select语句
-@asyncio.coroutine
-def select(sql, args, size=None):
+# @asyncio.coroutine
+async def select(sql, args, size=None):
     log(sql, args)
     global __pool
-    with (yield from __pool) as coon:
-        cur = yield from coon.cursor(aiomysql.DictCursor)
-        yield from cur.execute(sql.replace('?', '%s'), args or ())
+    with (await __pool) as coon:
+        cur = await coon.cursor(aiomysql.DictCursor)
+        await cur.execute(sql.replace('?', '%s'), args or ())
         if size:
-            rs = yield from cur.fetchmany(size)
+            rs = await cur.fetchmany(size)
         else:
-            rs = yield from cur.fetchall()
-        yield from cur.close()
+            rs = await cur.fetchall()
+        await cur.close()
         logging.info('rows returned: %s' % len(rs))
         return rs
 
 
 # 封装insert update delete
-@asyncio.coroutine
-def execute(sql, args):
+# @asyncio.coroutine
+async def execute(sql, args):
     log(sql)
-    with (yield from __pool) as coon:
+    with (await __pool) as coon:
         try:
-            cur = yield from coon.cursor()
-            yield from cur.execute(sql.replace('?', '%s'), args or ())
+            cur = await coon.cursor()
+            await cur.execute(sql.replace('?', '%s'), args or ())
             affected = cur.rowcount
-            yield from cur.close()
+            await cur.close()
         except BaseException as e:
             raise
         return affected
