@@ -30,8 +30,13 @@ async def index(request):
         Blog(id='2', name='Something New', summary=summary, created_at=time.time() - 3600),
         Blog(id='3', name='Learn Swift', summary=summary, created_at=time.time() - 7200)
     ]
-
-    user = await User.find(1)
+    cookie_str = request.cookies.get(COOKIE_NAME)
+    user = ''
+    if cookie_str:
+        if 'deleted' in cookie_str:
+            user = ''
+        else:
+            user = await cookie2user(cookie_str)
     return {
         '__template__': 'blogs.html',
         'blogs': blogs,
@@ -51,7 +56,7 @@ def user2cookie(user, max_age):
     :param max_age:
     :return:
     """
-    # build cookie string by: id-expires-shal
+    # build cookie string by: id-expires-sha1
     expires = str(int(time.time() + max_age))
     s = '%s-%s-%s-%s' % (user.id, user.password, expires, _COOKIE_KEY)
     L = [user.id, expires, hashlib.sha1(s.encode('utf-8')).hexdigest()]
@@ -71,14 +76,14 @@ async def cookie2user(cookie_str):
         L = cookie_str.split('-')
         if len(L) != 3:
             return None
-        uid, expires, shal = L
+        uid, expires, sha1 = L
         if int(expires) < time.time():
             return None
         user = await User.find(uid)
         if user is None:
             return None
         s = '%s-%s-%s-%s' % (uid, user.password, expires, _COOKIE_KEY)
-        if shal != hashlib.shal(s.encode('utf-8')).hedigest():
+        if sha1 != hashlib.sha1(s.encode('utf-8')).hexdigest():
             logging.info('invalid sha1')
             return None
         user.password = '******'
@@ -108,9 +113,9 @@ async def api_register_user(*, email, name, passwd):
     if len(users) > 0:
         raise APIError('register:failed', 'email', 'Email is already in use.')
     uid = next_id()
-    shal_passwd = '%s:%s' % (uid, passwd)
+    sha1_passwd = '%s:%s' % (uid, passwd)
     user = User(id=uid, name=name.strip(), email=email,
-                password=hashlib.sha1(shal_passwd.encode('utf-8')).hexdigest(),
+                password=hashlib.sha1(sha1_passwd.encode('utf-8')).hexdigest(),
                 image='http://www.gravatar.com/avatar/%s?d=mm&s=120' % hashlib.md5(email.encode('utf-8')).hexdigest)
     await user.save()
     r = web.Response()
@@ -139,11 +144,11 @@ async def authenticate(*, email, passwd):
         raise APIValueError('email', 'Email not exist.')
     user = users[0]
     # check password
-    shal = hashlib.sha1()
-    shal.update(user.id.encode('utf-8'))
-    shal.update(b':')
-    shal.update(passwd.encode('utf-8'))
-    if user.password != shal.hexdigest():
+    sha1 = hashlib.sha1()
+    sha1.update(user.id.encode('utf-8'))
+    sha1.update(b':')
+    sha1.update(passwd.encode('utf-8'))
+    if user.password != sha1.hexdigest():
         raise APIValueError('passwd', 'Invalid password.')
     # authenticate ok, set cookie:
     r = web.Response()
