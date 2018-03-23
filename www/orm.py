@@ -173,7 +173,8 @@ class Model(dict, metaclass=ModelMetaclass):
 
     def __getattr__(self, key):
         try:
-            return self[key]
+            if key != 'translate':
+                return self[key]
         except KeyError:
             raise AttributeError(r"'Model' object has no attribute '%s'" % key)
 
@@ -248,7 +249,7 @@ class Model(dict, metaclass=ModelMetaclass):
             logging.warning('failed to insert record: affected rows: %s' % rows)
 
     async def update(self):
-        args = list(map(self.getValue, self.__field__))
+        args = list(map(self.getValue, self.__fields__))
         args.append(self.getValue(self.__primary_key__))
         rows = await execute(self.__update__, args)
         if rows != 1:
