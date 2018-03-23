@@ -173,8 +173,7 @@ class Model(dict, metaclass=ModelMetaclass):
 
     def __getattr__(self, key):
         try:
-            if key != 'translate':
-                return self[key]
+            return self[key]
         except KeyError:
             raise AttributeError(r"'Model' object has no attribute '%s'" % key)
 
