@@ -6,7 +6,7 @@ import logging
 import json
 
 from aiohttp import web
-from apis import APIValueError, APIError, APIPermissionError
+from apis import APIValueError, APIError, APIPermissionError, Page
 from config import configs
 from coroweb import get
 from coroweb import post
@@ -133,6 +133,28 @@ def manage_create_blog(request):
         'action': '/api/blogs',
         'user': request.__user__
     }
+
+
+# 日志管理页面
+@get('/manage/blogs')
+def manage_blogs(request, *, page=1):
+    return {
+        '__template__': 'manage_blog.html',
+        'page_index': get_page_index(page),
+        'user': request.__user__
+    }
+
+
+# 日志列表
+@get('/api/blogs')
+async def api_blog(*, page=1):
+    page_index = get_page_index(page)
+    num = await Blog.findNumber('count(id)')
+    page = Page(num, page_index)
+    if num == 0:
+        return dict(page=p, blog=())
+    blogs = await Blog.findAll(orderBy='created_at desc', limit=(p.offset, p.limit))
+    return dict(page=page, blogs=blogs)
 
 
 # 日志编辑
