@@ -143,7 +143,7 @@ def datetime_filter(t):
 
 
 async def init(loop):
-    await orm.create_pool(host='127.0.0.1', port=3306, user='root', password='toor', database='awesome', loop=loop)
+    await orm.create_pool(host='127.0.0.1', port=3306, user='root', password='admin', database='awesome', loop=loop)
     app = web.Application(loop=loop, middlewares=[
         logger_factory, auth_factory, response_factory
     ])
