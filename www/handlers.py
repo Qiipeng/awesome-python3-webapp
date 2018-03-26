@@ -124,7 +124,7 @@ async def authenticate(*, email, passwd):
     return r
 
 
-# 日志编辑页面
+# 日志创建页面
 @get('/manage/blogs/create')
 def manage_create_blog(request):
     return {
@@ -152,12 +152,18 @@ async def api_blog(*, page=1):
     num = await Blog.findNumber('count(id)')
     page = Page(num, page_index)
     if num == 0:
-        return dict(page=p, blog=())
-    blogs = await Blog.findAll(orderBy='created_at desc', limit=(p.offset, p.limit))
+        return dict(page=page, blog=())
+    blogs = await Blog.findAll(orderBy='created_at desc', limit=(page.offset, page.limit))
     return dict(page=page, blogs=blogs)
 
 
 # 日志编辑
+@get('/api/blogs/edit')
+async def api_blog_edit():
+    pass
+
+
+# 日志创建
 @post('/api/blogs')
 async def api_create_blog(request, *, name, summary, content):
     check_admin(request)
