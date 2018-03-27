@@ -28,7 +28,7 @@ _COOKIE_KEY = configs.session.secret
 async def index(request, *, page='1'):
     page_index = get_page_index(page)
     num = await Blog.findNumber('count(id)')
-    page = Page(num)
+    page = Page(num, page_index)
     if num == 0:
         blogs = []
     else:
@@ -128,12 +128,11 @@ async def authenticate(*, email, passwd):
 
 # 日志创建页面
 @get('/manage/blogs/create')
-def manage_create_blog(request):
+def manage_create_blog():
     return {
         '__template__': 'manage_blog_edit.html',
         'id': '',
-        'action': '/api/blogs',
-        'user': request.__user__
+        'action': '/api/blogs'
     }
 
 
@@ -156,11 +155,10 @@ async def api_create_blog(request, *, name, summary, content):
 
 # 日志管理页面
 @get('/manage/blogs')
-def manage_blogs(request, *, page=1):
+def manage_blogs(*, page=1):
     return {
         '__template__': 'manage_blogs.html',
-        'page_index': get_page_index(page),
-        'user': request.__user__
+        'page_index': get_page_index(page)
     }
 
 
@@ -222,7 +220,7 @@ async def api_blog_delete(request, *, id):
 
 # 日志详情
 @get('/blog/{id}')
-async def get_blog(request, *, id):
+async def get_blog(*, id):
     blog = await Blog.find(id)
     comments = await Comment.findAll('blog_id=?', [id], orderBy='created_at desc')
     for comment in comments:
@@ -231,23 +229,22 @@ async def get_blog(request, *, id):
     return {
         '__template__': 'blog.html',
         'blog': blog,
-        'comments': comments,
-        'user': request.__user__
+        'comments': comments
     }
 
 
 @get('/manage/')
 def manage():
+    print('enter...')
     return 'redirect:/manage/comments'
 
 
 # 评论管理页面
 @get('/manage/comments')
-def manage_comments(request, *, page='1'):
+def manage_comments(*, page='1'):
     return {
         '__template__': 'manage_comments.html',
-        'page_index': get_page_index(page),
-        'user': request.__user__
+        'page_index': get_page_index(page)
     }
 
 
