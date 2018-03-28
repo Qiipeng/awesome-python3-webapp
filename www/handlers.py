@@ -25,7 +25,7 @@ _COOKIE_KEY = configs.session.secret
 
 # 首页
 @get('/')
-async def index(request, *, page='1'):
+async def index(*, page='1'):
     page_index = get_page_index(page)
     num = await Blog.findNumber('count(id)')
     page = Page(num, page_index)
@@ -33,17 +33,10 @@ async def index(request, *, page='1'):
         blogs = []
     else:
         blogs = await Blog.findAll(orderBy='created_at desc', limit=(page.offset, page.limit))
-    cookie_str = request.cookies.get(COOKIE_NAME)
-    user = ''
-    if cookie_str:
-        if 'deleted' in cookie_str:
-            user = ''
-        else:
-            user = await cookie2user(cookie_str)
     return {
         '__template__': 'blogs.html',
-        'blogs': blogs,
-        'user': user
+        'page': page,
+        'blogs': blogs
     }
 
 
