@@ -106,7 +106,7 @@ async def authenticate(*, email, passwd):
         raise APIValueError('email', 'Invalid email.')
     if not passwd:
         raise APIValueError('passwd', 'Invalid password.')
-    users = await User.findAll('email=?', email)
+    users = await User.findAll('email=?', [email])
     if len(users) == 0:
         raise APIValueError('email', 'Email not exist.')
     user = users[0]
@@ -233,7 +233,8 @@ async def get_blog(*, id):
     }
 
 
-@get('/manage/')
+# 页面底部manage链接
+@get('/manage')
 def manage():
     print('enter...')
     return 'redirect:/manage/comments'
@@ -270,7 +271,7 @@ async def api_create_comment(id, request, *, content):
         raise APIValueError('content')
     blog = await Blog.find(id)
     if blog is None:
-        raise APIResourceNotFoundError('blog')
+        raise APIResourceNotFoundError('Blog')
     comment = Comment(blog_id=blog.id, user_id=user.id, user_name=user.name, user_image=user.image,
                       content=content.strip())
     await comment.save()
@@ -280,9 +281,10 @@ async def api_create_comment(id, request, *, content):
 # 评论删除
 @post('/api/comments/{id}/delete')
 async def api_delete_comment(request, *, id):
-    print(id)
     check_admin(request)
     comment = await Comment.find(id)
+    if comment is None:
+        raise APIResourceNotFoundError('Comment')
     await comment.remove()
     return dict(id=id)
 
@@ -302,13 +304,36 @@ async def api_get_users(*, page='1'):
     page_index = get_page_index(page)
     num = await User.findNumber('count(id)')
     page = Page(num, page_index)
-    print(page)
     if num == 0:
         return dict(page=page, users=())
     users = await User.findAll(orderBy='created_at desc', limit=(page.offset, page.limit))
     for user in users:
         user.password = '******'
     return dict(page=page, users=users)
+
+
+# 用户注册
+@post('/api/users')
+async def api_register_user(*, email, name, passwd):
+    if not email or _RE_EMAIL.match(email):
+        raise APIValueError('email')
+    if not name or name.strip():
+        raise APIValueError('name')
+    if not passwd or _RE_SHAI.match(passwd):
+        raise APIValueError('passwd')
+    uid = next_id()
+    sha1_passwd = '%s %s' % (uid, passwd)
+    user = User(id=uid, name=name.strip(), email=email,
+                passwd=hashlib.sha1(sha1_passwd.encode('utf-8')).hexdigest(),
+                image='http://www.gravatar.com/avatar/%s?d=mm&s=120' %
+                      hashlib.md5(email.encode('utf-8')).hexdigest())
+    await user.save()
+    r = web.Response()
+    r.set_cookie(COOKIE_NAME, user2cookie(user, 86400), max_age=86400, httponly=True)
+    user.password = '******'
+    r.content_type = 'application/json'
+    r.body = json.dumps(user, ensure_ascii=False).encode('utf-8')
+    return r
 
 
 # 邮箱验证
