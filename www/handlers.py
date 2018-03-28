@@ -254,7 +254,7 @@ def manage_comments(*, page='1'):
 async def api_comments(*, page='1'):
     page_index = get_page_index(page)
     num = await Comment.findNumber('count(id)')
-    page = Page(page_index, num)
+    page = Page(num, page_index)
     if num == 0:
         return dict(page=page, comments=())
     comments = await Comment.findAll(orderBy='created_at desc', limit=(page.offset, page.limit))

@@ -8,10 +8,15 @@ a:hover, a:active {
 #vm {
     display: none;
 }
+
 #loading {
     margin-bottom: 15px;
 }
+
 #error {
     display: none;
     margin-bottom: 15px;
+}
+
+.bottom-position {
 }
